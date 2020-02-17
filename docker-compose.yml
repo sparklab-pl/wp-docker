@@ -1,0 +1,72 @@
+version: "3"
+
+services:
+  mysql:
+    container_name: ${DOCKER_PREFIX}-mysql
+    image: mariadb:10.4
+    networks:
+      - wordpress
+    environment:
+#      MYSQL_ROOT_PASSWORD: wordpress
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+
+  nginx:
+    container_name: ${DOCKER_PREFIX}-nginx
+    image: sparklabpl/nginx:latest
+    networks:
+      - wordpress
+    volumes:
+      - "app:/app"
+      - "./config/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf"
+    ports:
+      - "${HTTP_PORT}:80"
+
+  phpfpm:
+    container_name: ${DOCKER_PREFIX}-phpfpm
+    image: sparklabpl/phpfpm:dev
+    networks:
+      - wordpress
+    volumes:
+      - "app:/app"
+      - "./config/phpfpm/php.ini:/usr/local/etc/php/php.ini"
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+
+  wpcli:
+    container_name: ${DOCKER_PREFIX}-wpcli
+    image: sparklabpl/wpcli:latest
+    networks:
+      - wordpress
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+    volumes:
+      - "app:/app"
+
+  ssh:
+    container_name: ${DOCKER_PREFIX}-ssh
+    build:
+      context: ./
+      dockerfile: ./config/docker/ssh/Dockerfile
+    command: bash -c "echo 'app:${SSH_PASSWORD}' | chpasswd && /usr/sbin/sshd -D"
+    ports:
+      - "${SSH_PORT}:22"
+    restart: always
+    volumes:
+      - "app:/app"
+    networks:
+      - wordpress
+
+networks:
+  wordpress:
+    driver: bridge
+
+volumes:
+  app:

@@ -1,0 +1,1 @@
+docker exec wp-docker-wpcli composer install
